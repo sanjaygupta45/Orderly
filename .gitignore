@@ -1,22 +1,21 @@
-# Compiled class file
+# ============================================
+#   Java & Spring Boot GitIgnore Template
+# ============================================
+
+# --- Compiled class files ---
 *.class
 
-# Log file
+# --- Log files ---
 *.log
+*.out
 
-# local database
-docker
-
-# BlueJ files
+# --- BlueJ files ---
 *.ctxt
-*.idea
 
-*.idl
-
-# Mobile Tools for Java (J2ME)
+# --- Mobile Tools for Java (J2ME) ---
 .mtj.tmp/
 
-# Package Files #
+# --- Package Files ---
 *.jar
 *.war
 *.nar
@@ -25,6 +24,85 @@ docker
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# --- JVM crash logs ---
 hs_err_pid*
 replay_pid*
+
+# --- IDEA / Eclipse / VSCode Project Settings ---
+*.iml
+.idea/
+.vscode/
+.classpath
+.project
+.settings/
+
+# --- Maven & Gradle ---
+target/
+build/
+out/
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+!gradlew
+!gradlew.bat
+
+# --- Local Environment Variables ---
+.env
+.env.*
+!.env.example
+
+# --- Docker ---
+/docker/
+/docker-compose.yml
+Dockerfile
+.dockerignore
+
+# --- OS generated files ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+__MACOSX/
+
+# --- Temporary files ---
+*.swp
+*.swo
+*.tmp
+*.bak
+*.backup
+
+# --- Local database / data dump ---
+*.sql
+*.sqlite
+*.db
+/data/
+mysql/
+postgres/
+mongodb/
+
+# --- Node (if using frontend in same repo) ---
+node_modules/
+npm-debug.log
+yarn-error.log
+.pnpm-store/
+
+# --- Coverage / Testing ---
+/coverage/
+.test/
+reports/
+jacoco.exec
+
+# --- Cache & Temp ---
+/.cache/
+/tmp/
+/logs/
+
+# --- OS & Tool specific ---
+*.pid
+*.seed
+*.lock
+
+# --- Others you may want to keep ignored ---
+/uploads/
+/storage/
+/secrets/
+/keys/
