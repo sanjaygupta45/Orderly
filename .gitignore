@@ -4,8 +4,14 @@
 # Log file
 *.log
 
+# local database
+docker
+
 # BlueJ files
 *.ctxt
+*.idea
+
+*.idl
 
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
