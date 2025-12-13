@@ -1,7 +1,15 @@
-package com.hello.microservice.product_service.exception;
+package com.orderly.product_service.exception;
 
+/**
+ * Exception thrown when a product resource is not found
+ */
 public class ResourceNotFoundException extends RuntimeException {
     public ResourceNotFoundException(String message) {
         super(message);
     }
+
+    public ResourceNotFoundException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }
+

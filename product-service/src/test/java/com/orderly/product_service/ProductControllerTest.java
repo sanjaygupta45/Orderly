@@ -1,10 +1,11 @@
 package com.orderly.product_service;
 
 
-import com.hello.microservice.product_service.service.ProductService;
+import com.orderly.product_service.service.ProductService;
 import com.orderly.product_service.controllers.ProductController;
 import com.orderly.product_service.dto.ProductRequest;
 import com.orderly.product_service.dto.ProductResponse;
+import com.orderly.product_service.exception.ApiError;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -40,13 +41,14 @@ class ProductControllerTest {
         when(productService.createProduct(any(ProductRequest.class))).thenReturn(expectedResponse);
 
         // Act
-        ResponseEntity<ProductResponse> response = productController.createProduct(request);
+        ResponseEntity<ApiError> response = productController.createProduct(request);
 
         // Assert
         assertNotNull(response);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals("507f1f77bcf86cd799439011", response.getBody().id());
+        assertTrue(response.getBody().isSuccess());
+        assertEquals("Product created successfully", response.getBody().getMessage());
         verify(productService, times(1)).createProduct(request);
     }
 
@@ -61,13 +63,14 @@ class ProductControllerTest {
         when(productService.getProductById(productId)).thenReturn(expectedResponse);
 
         // Act
-        ResponseEntity<ProductResponse> response = productController.getProductById(productId);
+        ResponseEntity<ApiError> response = productController.getProductById(productId);
 
         // Assert
         assertNotNull(response);
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals(productId, response.getBody().id());
+        assertTrue(response.getBody().isSuccess());
+        assertEquals("Product retrieved successfully", response.getBody().getMessage());
         verify(productService, times(1)).getProductById(productId);
     }
 
@@ -82,13 +85,14 @@ class ProductControllerTest {
         when(productService.getAllProducts(any())).thenReturn(expectedResponses);
 
         // Act
-        ResponseEntity<List<ProductResponse>> response = productController.getAllProducts(null, 0, 10);
+        ResponseEntity<ApiError> response = productController.getAllProducts(null, 0, 10);
 
         // Assert
         assertNotNull(response);
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals(2, response.getBody().size());
+        assertTrue(response.getBody().isSuccess());
+        assertEquals("Products retrieved successfully", response.getBody().getMessage());
         verify(productService, times(1)).getAllProducts(any());
     }
 }
