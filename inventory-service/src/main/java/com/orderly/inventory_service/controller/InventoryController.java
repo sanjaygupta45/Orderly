@@ -25,7 +25,7 @@ public class InventoryController {
     /**
      * Check if a product is in stock.
      *
-     * @param skuCode Product SKU code
+     * @param skuCode  Product SKU code
      * @param quantity Quantity required
      * @return true if in stock, false otherwise
      */
@@ -73,5 +73,36 @@ public class InventoryController {
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-}
 
+    /**
+     * Add stock for a product.
+     *
+     * @param inventoryRequest Inventory request containing SKU and quantity
+     * @return Updated inventory
+     */
+    @PostMapping("/add")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<InventoryResponse> addStock(
+            @RequestBody com.orderly.inventory_service.dto.InventoryRequest inventoryRequest) {
+        log.info("Request to add stock: {}", inventoryRequest);
+        return new ResponseEntity<>(
+                inventoryService.addStock(inventoryRequest.getSkuCode(), inventoryRequest.getQuantity()),
+                HttpStatus.CREATED);
+    }
+
+    /**
+     * Reduce stock for a product.
+     *
+     * @param inventoryRequest Inventory request containing SKU and quantity
+     * @return Updated inventory
+     */
+    @PostMapping("/reduce")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<InventoryResponse> reduceStock(
+            @RequestBody com.orderly.inventory_service.dto.InventoryRequest inventoryRequest) {
+        log.info("Request to reduce stock: {}", inventoryRequest);
+        return new ResponseEntity<>(
+                inventoryService.reduceStock(inventoryRequest.getSkuCode(), inventoryRequest.getQuantity()),
+                HttpStatus.OK);
+    }
+}
