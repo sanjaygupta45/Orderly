@@ -7,9 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * Standard API error response format
- */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -22,4 +19,3 @@ public class ApiError {
     private String path;
     private Object details;
 }
-

@@ -13,7 +13,7 @@ import java.util.concurrent.CompletableFuture;
  * Feign client for communicating with Inventory Service.
  * Handles stock validation for orders.
  */
-@FeignClient(name = "inventory-service", url = "${feign.client.config.inventory-service.url}")
+@FeignClient(name = "inventory-service", url = "${inventory-service.url}")
 public interface InventoryClient {
 
     /**

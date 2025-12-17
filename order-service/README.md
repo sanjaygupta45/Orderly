@@ -1,16 +1,18 @@
 # Order Service
 
-The **Order Service** is the core component of the Orderly microservices ecosystem responsible for handling customer orders. It orchestrates the order lifecycle, from creation to processing, ensuring seamless integration with inventory and payment systems.
+The **Order Service** handles order placement and management within the Orderly microservices ecosystem. It validates inventory availability before processing orders.
 
 ## Responsibilities
 
-*   **Order Management**: Handles the creation, retrieval, and updating of customer orders.
-*   **Inventory Orchestration**: Communicates with the Inventory Service to validate stock availability before order placement.
-*   **Data Persistence**: securely stores order details and transaction history.
-*   **Response handling**: Provides standardized API responses for successful and failed order operations.
+*   **Order Placement**: Accepts and validates order requests from clients.
+*   **Inventory Validation**: Communicates with Inventory Service to verify stock availability.
+*   **Order Persistence**: Saves confirmed orders to the database.
+*   **Resilience**: Implements circuit breakers and retries for fault tolerance.
 
 ## Key Features
 
-*   **Place Order**: validates stock and creates a new order (`POST /api/order`).
-*   **Order Validation**: Ensures products are in stock before processing transactions.
-*   **Standardized Responses**: Returns unified `ApiResponse` structures for consistent client handling.
+*   **Place Order**: Submit new orders with SKU, price, and quantity (`POST /api/order`).
+*   **Inventory Check**: Synchronous validation against Inventory Service before order confirmation.
+*   **Circuit Breaker**: Graceful degradation when Inventory Service is unavailable.
+*   **Retry Logic**: Automatic retries for transient failures.
+
