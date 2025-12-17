@@ -1,5 +1,6 @@
 package com.orderly.order_service.exception;
 
+import com.orderly.order_service.dto.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,9 +23,9 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException ex, WebRequest request) {
+    public ResponseEntity<ApiResponse> handleIllegalArgument(IllegalArgumentException ex, WebRequest request) {
         log.warn("Illegal argument: {}", ex.getMessage());
-        ApiError error = ApiError.builder()
+        ApiResponse error = ApiResponse.builder()
                 .success(false)
                 .message(ex.getMessage())
                 .status(HttpStatus.BAD_REQUEST.value())
@@ -35,7 +36,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiError> handleValidationException(MethodArgumentNotValidException ex, WebRequest request) {
+    public ResponseEntity<ApiResponse> handleValidationException(MethodArgumentNotValidException ex,
+            WebRequest request) {
         Map<String, String> fieldErrors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
             String fieldName = ((FieldError) error).getField();
@@ -44,7 +46,7 @@ public class GlobalExceptionHandler {
         });
 
         log.warn("Validation failed: {}", fieldErrors);
-        ApiError error = ApiError.builder()
+        ApiResponse error = ApiResponse.builder()
                 .success(false)
                 .message("Validation failed")
                 .status(HttpStatus.BAD_REQUEST.value())
@@ -56,9 +58,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ApiError> handleRuntimeException(RuntimeException ex, WebRequest request) {
+    public ResponseEntity<ApiResponse> handleRuntimeException(RuntimeException ex, WebRequest request) {
         log.error("Runtime exception occurred", ex);
-        ApiError error = ApiError.builder()
+        ApiResponse error = ApiResponse.builder()
                 .success(false)
                 .message(ex.getMessage() != null ? ex.getMessage() : "An error occurred")
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
@@ -69,9 +71,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiError> handleGeneralException(Exception ex, WebRequest request) {
+    public ResponseEntity<ApiResponse> handleGeneralException(Exception ex, WebRequest request) {
         log.error("Unexpected exception occurred", ex);
-        ApiError error = ApiError.builder()
+        ApiResponse error = ApiResponse.builder()
                 .success(false)
                 .message("An unexpected error occurred")
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
@@ -81,4 +83,3 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
-

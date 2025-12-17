@@ -1,6 +1,5 @@
 package com.orderly.order_service.client;
 
-import com.orderly.order_service.dto.InventoryResponse;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
@@ -20,7 +19,7 @@ public interface InventoryClient {
     /**
      * Check if product is in stock.
      *
-     * @param skuCode Product SKU code
+     * @param skuCode  Product SKU code
      * @param quantity Quantity required
      * @return true if in stock, false otherwise
      */
@@ -41,4 +40,3 @@ public interface InventoryClient {
         return CompletableFuture.completedFuture(true);
     }
 }
-
