@@ -15,19 +15,10 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
     private String email;
-
-    @Column(nullable = false)
     private String password;
-
-    @Column(nullable = false)
     private String role;
-
-    @Column(nullable = false)
     private Boolean enabled = true;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
     private Long createdAt;
 
     @PrePersist
