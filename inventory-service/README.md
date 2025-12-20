@@ -1,19 +1,42 @@
-# Inventory Service
+# 📦 Inventory Service
 
-The **Inventory Service** manages product stock availability and inventory operations within the Orderly microservices ecosystem. It ensures that orders can only be placed for items that are physically available.
+The **Inventory Service** manages product stock levels and availability within the Orderly platform. It ensures data integrity by preventing overselling through transactional stock validation.
 
-## Responsibilities
+## 📋 Responsibilities
 
-*   **Stock Management**: Tracks quantity of products by SKU.
-*   **Availability Checks**: Validates if sufficient stock exists before order processing.
-*   **Inventory Updates**: Handles increments (restocking) and decrements (sales) of inventory.
-*   **Data Integrity**: Prevents overselling through transactional stock validation.
+- **Stock Management** - Tracks product quantities by SKU
+- **Availability Checks** - Validates sufficient stock before order processing
+- **Inventory Updates** - Handles restocking and sales deductions
+- **Data Integrity** - Transactional operations to prevent race conditions
 
-## Key Features
+## 🔌 API Endpoints
 
-*   **Check Stock**: Verify availability for a specific SKU and quantity (`GET /api/inventory`).
-*   **Get Details**: Retrieve full inventory status for a product (`GET /api/inventory/details`).
-*   **Add Stock**: Increase inventory levels (`POST /api/inventory/add`).
-*   **Reduce Stock**: Reserve or deduct items for orders (`POST /api/inventory/reduce`).
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/inventory` | Check stock availability by SKU |
+| GET | `/api/inventory/details` | Get full inventory details |
+| POST | `/api/inventory/add` | Add stock (restocking) |
+| POST | `/api/inventory/reduce` | Reduce stock (order fulfillment) |
 
+## 🛠 Tech Stack
 
+- **Framework**: Spring Boot 3.2.5
+- **Database**: MySQL 8.0
+- **ORM**: Spring Data JPA
+- **Validation**: Jakarta Validation
+
+## ⚙️ Configuration
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `server.port` | 8082 | Service port |
+| `spring.datasource.url` | - | MySQL connection URL |
+
+## 🚀 Running Locally
+
+```bash
+cd inventory-service
+mvn spring-boot:run
+```
+
+Service available at: `http://localhost:8082`
