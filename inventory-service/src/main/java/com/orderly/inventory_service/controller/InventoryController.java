@@ -15,20 +15,13 @@ import java.time.LocalDateTime;
  * Inventory Controller - Handles inventory stock validation
  */
 @RestController
-@RequestMapping("/api/inventory")
+@RequestMapping("/inventory")
 @RequiredArgsConstructor
 @Slf4j
 public class InventoryController {
 
     private final InventoryService inventoryService;
 
-    /**
-     * Check if a product is in stock.
-     *
-     * @param skuCode  Product SKU code
-     * @param quantity Quantity required
-     * @return true if in stock, false otherwise
-     */
     @GetMapping
     public ResponseEntity<Boolean> isInStock(@RequestParam String skuCode, @RequestParam Integer quantity) {
         try {
@@ -42,12 +35,6 @@ public class InventoryController {
         }
     }
 
-    /**
-     * Get inventory details for a SKU.
-     *
-     * @param skuCode Product SKU code
-     * @return Inventory details
-     */
     @GetMapping("/details")
     public ResponseEntity<ApiError> getInventoryDetails(@RequestParam String skuCode) {
         try {
@@ -74,12 +61,6 @@ public class InventoryController {
         }
     }
 
-    /**
-     * Add stock for a product.
-     *
-     * @param inventoryRequest Inventory request containing SKU and quantity
-     * @return Updated inventory
-     */
     @PostMapping("/add")
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<InventoryResponse> addStock(
@@ -90,12 +71,6 @@ public class InventoryController {
                 HttpStatus.CREATED);
     }
 
-    /**
-     * Reduce stock for a product.
-     *
-     * @param inventoryRequest Inventory request containing SKU and quantity
-     * @return Updated inventory
-     */
     @PostMapping("/reduce")
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<InventoryResponse> reduceStock(

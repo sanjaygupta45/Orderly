@@ -7,6 +7,7 @@ import com.orderly.order_service.model.Order;
 import com.orderly.order_service.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,10 +22,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final InventoryClient inventoryClient;
 
-    /**
-     * Place an order with inventory validation.
-     * Checks stock before saving the order.
-     */
+    // Place an order with inventory validation
     public OrderResponse placeOrder(OrderRequest orderRequest) {
         log.info("Placing order for SKU: {}, Quantity: {}", orderRequest.skuCode(), orderRequest.quantity());
 
@@ -49,6 +47,7 @@ public class OrderService {
         return mapToOrderResponse(order);
     }
 
+    @NonNull
     private Order mapToOrder(OrderRequest orderRequest) {
         Order order = new Order();
         order.setOrderNumber(UUID.randomUUID().toString());

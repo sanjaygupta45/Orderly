@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.concurrent.CompletableFuture;
 
-@FeignClient(name = "inventory-service", url = "${inventory-service.url}")
+@FeignClient(name = "inventory-service", path = "/api")
 public interface InventoryClient {
 
     @GetMapping("/inventory")
