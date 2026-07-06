@@ -22,9 +22,10 @@ public class JwtService {
     @Value("${jwt.web.ttl-hour:24}")
     private long jwtExpirationHours;
 
-    public String generateToken(String email, String role) {
+    public String generateToken(String email, String role, Long userId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", role);
+        claims.put("userId", userId);   // downstream services / gateway read this
         return buildToken(claims, email);
     }
 

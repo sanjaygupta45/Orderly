@@ -1,4 +1,4 @@
-package com.orderflow.product.exception;
+package com.orderflow.notification.exception;
 
 import com.orderflow.shared.common.api.ApiError;
 import com.orderflow.shared.common.correlation.CorrelationId;
@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
@@ -18,15 +17,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiError> handleStatus(ResponseStatusException ex, HttpServletRequest req) {
         return build(HttpStatus.valueOf(ex.getStatusCode().value()), ex.getReason(), req);
-    }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest req) {
-        String message = ex.getBindingResult().getFieldErrors().stream()
-                .findFirst()
-                .map(e -> e.getField() + ": " + e.getDefaultMessage())
-                .orElse("Validation failed");
-        return build(HttpStatus.BAD_REQUEST, message, req);
     }
 
     @ExceptionHandler(Exception.class)

@@ -43,7 +43,7 @@ public class UserServiceImpl implements UserService {
 
         User savedUser = userRepository.save(user);
 
-        String token = jwtService.generateToken(savedUser.getEmail(), savedUser.getRole());
+        String token = jwtService.generateToken(savedUser.getEmail(), savedUser.getRole(), savedUser.getId());
 
         return LoginResponseDTO.builder()
                 .accessToken(token)
@@ -51,6 +51,7 @@ public class UserServiceImpl implements UserService {
                 .expiresIn(jwtService.getExpirationTime())
                 .email(savedUser.getEmail())
                 .role(savedUser.getRole())
+                .userId(savedUser.getId())
                 .build();
     }
 
@@ -67,7 +68,7 @@ public class UserServiceImpl implements UserService {
             throw new BadCredentialsException("User account is disabled");
         }
 
-        String token = jwtService.generateToken(user.getEmail(), user.getRole());
+        String token = jwtService.generateToken(user.getEmail(), user.getRole(), user.getId());
 
         return LoginResponseDTO.builder()
                 .accessToken(token)

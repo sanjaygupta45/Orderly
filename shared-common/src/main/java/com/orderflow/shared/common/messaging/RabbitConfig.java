@@ -41,8 +41,8 @@ public class RabbitConfig {
         DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
         // Producers stamp the event class in the __TypeId__ header; the consumer maps it
         // back to the concrete event type so @RabbitHandler can dispatch by type.
-        // Only our own packages are trusted (deserialization safety).
-        typeMapper.setTrustedPackages("com.orderflow.*", "java.util", "java.lang");
+        // Trust only our events package (exact match - Spring AMQP does not glob "*").
+        typeMapper.setTrustedPackages("com.orderflow.shared.events", "java.util", "java.lang");
         converter.setJavaTypeMapper(typeMapper);
         return converter;
     }

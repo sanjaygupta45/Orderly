@@ -1,104 +1,77 @@
 package com.orderflow.product.service.impl;
 
-import com.orderflow.product.service.ProductService;
 import com.orderflow.product.dto.ProductRequest;
 import com.orderflow.product.dto.ProductResponse;
-import com.orderflow.product.exception.ApiError;
 import com.orderflow.product.models.Product;
 import com.orderflow.product.repository.ProductRepository;
+import com.orderflow.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
+@RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
 
-        private final ProductRepository productRepository;
+    private final ProductRepository productRepository;
 
-        @Override
-        public ApiError createProduct(ProductRequest productRequest, String requestPath) {
-                log.info("Creating product: {}", productRequest.name());
+    @Override
+    @Transactional
+    public ProductResponse create(ProductRequest request) {
+        productRepository.findBySkuCode(request.skuCode()).ifPresent(p -> {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "SKU already exists: " + request.skuCode());
+        });
+        Product product = Product.builder()
+                .skuCode(request.skuCode())
+                .name(request.name())
+                .description(request.description())
+                .category(request.category())
+                .price(request.price())
+                .build();
+        Product saved = productRepository.save(product);
+        log.info("Created product {} (sku {})", saved.getId(), saved.getSkuCode());
+        return toResponse(saved);
+    }
 
-                Product product = Product.builder()
-                                .name(productRequest.name())
-                                .description(productRequest.description())
-                                .price(productRequest.price())
-                                .build();
+    @Override
+    @Transactional(readOnly = true)
+    public ProductResponse getById(Long id) {
+        return productRepository.findById(id)
+                .map(this::toResponse)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found: " + id));
+    }
 
-                Product savedProduct = productRepository.save(product);
-                log.info("Product created successfully with ID: {}", savedProduct.getId());
+    @Override
+    @Transactional(readOnly = true)
+    public ProductResponse getBySku(String skuCode) {
+        return productRepository.findBySkuCode(skuCode)
+                .map(this::toResponse)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found for SKU: " + skuCode));
+    }
 
-                ProductResponse productResponse = mapToProductResponse(savedProduct);
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getAll(String category) {
+        List<Product> products = StringUtils.hasText(category)
+                ? productRepository.findByCategoryIgnoreCase(category)
+                : productRepository.findAll();
+        return products.stream().map(this::toResponse).toList();
+    }
 
-                return ApiError.builder()
-                                .success(true)
-                                .message("Product created successfully")
-                                .status(HttpStatus.CREATED.value())
-                                .timestamp(LocalDateTime.now())
-                                .path(requestPath)
-                                .details(productResponse)
-                                .build();
-        }
-
-        @Override
-        public ApiError getProductById(String productId, String requestPath) {
-                log.info("Fetching product by ID: {}", productId);
-
-                if (!StringUtils.hasLength(productId)) {
-                        throw new IllegalArgumentException("Product ID must not be null or empty");
-                }
-
-                Product product = productRepository.findById(productId)
-                                .orElseThrow(() -> {
-                                        log.warn("Product not found with ID: {}", productId);
-                                        return new IllegalArgumentException(
-                                                        "Product with ID " + productId + " not found");
-                                });
-
-                ProductResponse productResponse = mapToProductResponse(product);
-
-                return ApiError.builder()
-                                .success(true)
-                                .message("Product retrieved successfully")
-                                .status(HttpStatus.OK.value())
-                                .timestamp(LocalDateTime.now())
-                                .path(requestPath)
-                                .details(productResponse)
-                                .build();
-        }
-
-        @Override
-        public ApiError getAllProducts(String category, int page, int size, String requestPath) {
-                log.info("Fetching all products - page: {}, size: {}", page, size);
-
-                List<Product> products = productRepository.findAll();
-
-                List<ProductResponse> productResponses = products.stream()
-                                .map(this::mapToProductResponse)
-                                .toList();
-
-                return ApiError.builder()
-                                .success(true)
-                                .message("Products retrieved successfully")
-                                .status(HttpStatus.OK.value())
-                                .timestamp(LocalDateTime.now())
-                                .path(requestPath)
-                                .details(productResponses)
-                                .build();
-        }
-
-        private ProductResponse mapToProductResponse(Product product) {
-                return new ProductResponse(
-                                product.getId(),
-                                product.getName(),
-                                product.getDescription(),
-                                product.getPrice());
-        }
+    private ProductResponse toResponse(Product product) {
+        return new ProductResponse(
+                product.getId(),
+                product.getSkuCode(),
+                product.getName(),
+                product.getDescription(),
+                product.getCategory(),
+                product.getPrice());
+    }
 }

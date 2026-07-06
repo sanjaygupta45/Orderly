@@ -1,12 +1,18 @@
 package com.orderflow.product.service;
 
 import com.orderflow.product.dto.ProductRequest;
-import com.orderflow.product.exception.ApiError;
+import com.orderflow.product.dto.ProductResponse;
+
+import java.util.List;
 
 public interface ProductService {
-    ApiError createProduct(ProductRequest productRequest, String requestPath);
 
-    ApiError getProductById(String productId, String requestPath);
+    ProductResponse create(ProductRequest request);
 
-    ApiError getAllProducts(String category, int page, int size, String requestPath);
+    ProductResponse getById(Long id);
+
+    ProductResponse getBySku(String skuCode);
+
+    // category is optional; null/blank returns everything
+    List<ProductResponse> getAll(String category);
 }

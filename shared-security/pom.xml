@@ -25,10 +25,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
-        <!-- SecurityContext, GrantedAuthority, authentication token -->
+        <!-- SecurityContext, GrantedAuthority, authentication token.
+             Optional so the reactive api-gateway can reuse JwtService without
+             pulling servlet Spring Security. Resource services declare it themselves. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
+            <optional>true</optional>
         </dependency>
         <!-- OncePerRequestFilter + servlet API (services already ship web) -->
         <dependency>
