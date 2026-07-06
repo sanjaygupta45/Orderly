@@ -51,10 +51,10 @@ out/
 !.env.example
 
 # --- Docker ---
-/docker/
-/docker-compose.yml
-Dockerfile
-.dockerignore
+# Track compose files, Dockerfiles and config (prometheus/grafana provisioning);
+# ignore only the runtime data directories.
+docker/mysql/
+docker/mongodb/
 
 # --- OS generated files ---
 .DS_Store
@@ -71,13 +71,12 @@ __MACOSX/
 *.backup
 
 # --- Local database / data dump ---
-*.sql
+# NOTE: mysql/init.sql is tracked on purpose (needed for one-command startup),
+# so we do not blanket-ignore *.sql or the mysql/ directory here.
 *.sqlite
 *.db
 /data/
-mysql/
 postgres/
-mongodb/
 
 # --- Node (if using frontend in same repo) ---
 node_modules/

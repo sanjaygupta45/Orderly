@@ -1,25 +1,103 @@
+# OrderFlow local infrastructure.
+# Brings up the backing services (DB, broker, cache, monitoring) for local dev.
+# Application services run from your IDE / `mvn spring-boot:run` during development;
+# they get dockerized and added here in a later phase (`docker compose up` -> whole platform).
+#
+#   docker compose up -d
+#
+# UIs: RabbitMQ http://localhost:15672 (orderflow/orderflow) | Prometheus :9090 | Grafana :3000 (admin/admin)
+
 services:
   mysql:
-    image: mysql:8.3.0
-    container_name: mysql
-    restart: always
+    image: mysql:8.4
+    container_name: orderflow-mysql
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: mysql
     ports:
       - "3308:3306"
     volumes:
-      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./docker/mysql/data:/var/lib/mysql
+      # init.sql runs once on first start and creates one database per service
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - mysql-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pmysql"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+    networks: [orderflow-net]
 
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: orderflow-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: orderflow
+      RABBITMQ_DEFAULT_PASS: orderflow
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # management UI
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [orderflow-net]
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: orderflow-redis
+    restart: unless-stopped
+    # Password matches the services' spring.data.redis.password
+    command: ["redis-server", "--requirepass", "redis"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [orderflow-net]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: orderflow-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    # Lets Prometheus (in Docker) scrape services running on the host during dev
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: [orderflow-net]
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: orderflow-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    depends_on: [prometheus]
+    networks: [orderflow-net]
+
+  # TEMPORARY: product-service still uses MongoDB. Removed once it migrates to MySQL (Phase 2).
   mongo:
-    image: mongo:7.0.5
-    container_name: mongo
-    restart: always
+    image: mongo:7.0
+    container_name: orderflow-mongo
+    restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: password
@@ -27,4 +105,17 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - ./docker/mongodb/data:/data/db
+      - mongo-data:/data/db
+    networks: [orderflow-net]
+
+networks:
+  orderflow-net:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  rabbitmq-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:
+  mongo-data:
