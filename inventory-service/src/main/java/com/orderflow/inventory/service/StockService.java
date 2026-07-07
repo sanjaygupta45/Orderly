@@ -15,6 +15,7 @@ import com.orderflow.shared.events.OrderCreatedEvent;
 import com.orderflow.shared.events.OrderLineItem;
 import com.orderflow.shared.events.PaymentFailedEvent;
 import com.orderflow.shared.events.RoutingKeys;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -40,6 +41,7 @@ public class StockService {
     private final IdempotencyService idempotency;
     private final OutboxEventPublisher outbox;
     private final CacheManager cacheManager;
+    private final MeterRegistry meterRegistry;
 
     @Transactional
     public void reserveForOrder(OrderCreatedEvent event) {
@@ -85,6 +87,7 @@ public class StockService {
                         .amount(event.getTotalAmount())
                         .correlationId(event.getCorrelationId())
                         .build());
+                meterRegistry.counter("orderflow.inventory.reserved").increment();
                 log.info("Reserved stock for order {}", event.getOrderId());
             } else {
                 outbox.save(RoutingKeys.INVENTORY_FAILED, InventoryFailedEvent.builder()
@@ -92,6 +95,7 @@ public class StockService {
                         .reason(failure)
                         .correlationId(event.getCorrelationId())
                         .build());
+                meterRegistry.counter("orderflow.inventory.reservation_failed").increment();
                 log.warn("Reservation failed for order {}: {}", event.getOrderId(), failure);
             }
         } finally {
@@ -120,6 +124,7 @@ public class StockService {
                     .reason(event.getReason())
                     .correlationId(event.getCorrelationId())
                     .build());
+            meterRegistry.counter("orderflow.inventory.released").increment();
             log.info("Released {} reservation(s) for order {}", reservations.size(), event.getOrderId());
         } finally {
             MDC.remove(CorrelationId.MDC_KEY);

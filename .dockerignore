@@ -1,0 +1,10 @@
+# Keep the Docker build context small and clean (jars are rebuilt inside the image).
+**/target
+.git
+.idea
+.vscode
+*.log
+docker/mysql
+docker/mongodb
+**/node_modules
+frontend/dist

@@ -1,22 +1,33 @@
 package com.orderflow.order.config;
 
+import com.orderflow.shared.security.JwtAuthenticationFilter;
+import com.orderflow.shared.security.JwtService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-// Phase 2: stateless and open, so the saga can be exercised with plain curl.
-// Phase 3 swaps this for JWT validation using shared-security.
+// Stateless JWT security. The token issued by auth-service (and forwarded by the
+// gateway) is validated here too, so the service is safe even if reached directly.
 @Configuration
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtService jwtService;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/**").permitAll()
+                        .anyRequest().authenticated())
+                .addFilterBefore(new JwtAuthenticationFilter(jwtService),
+                        UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

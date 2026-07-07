@@ -12,6 +12,7 @@ import com.orderflow.shared.events.OrderConfirmedEvent;
 import com.orderflow.shared.events.PaymentCompletedEvent;
 import com.orderflow.shared.events.PaymentFailedEvent;
 import com.orderflow.shared.events.RoutingKeys;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -29,6 +30,7 @@ public class OrderSagaHandler {
     private final OrderRepository orderRepository;
     private final IdempotencyService idempotency;
     private final OutboxEventPublisher outbox;
+    private final MeterRegistry meterRegistry;
 
     // Payment succeeded -> confirm the order.
     @Transactional
@@ -46,6 +48,7 @@ public class OrderSagaHandler {
                         .userId(order.getUserId())
                         .correlationId(event.getCorrelationId())
                         .build());
+                meterRegistry.counter("orderflow.orders", "status", "confirmed").increment();
                 log.info("Order {} CONFIRMED", order.getOrderId());
             }
         } finally {
@@ -71,6 +74,7 @@ public class OrderSagaHandler {
                         .reason(event.getReason())
                         .correlationId(event.getCorrelationId())
                         .build());
+                meterRegistry.counter("orderflow.orders", "status", "failed").increment();
                 log.info("Order {} CANCELLED ({})", order.getOrderId(), event.getReason());
             }
         } finally {
@@ -97,6 +101,7 @@ public class OrderSagaHandler {
                         .reason(event.getReason())
                         .correlationId(event.getCorrelationId())
                         .build());
+                meterRegistry.counter("orderflow.orders", "status", "failed").increment();
                 log.info("Order {} FAILED ({})", order.getOrderId(), event.getReason());
             }
         } finally {

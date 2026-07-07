@@ -26,7 +26,7 @@
         <module>shared-events</module>
         <module>shared-common</module>
         <module>shared-security</module>
-        <module>service-registry</module>
+        <module>api-gateway</module>
         <module>auth-service</module>
         <module>product-service</module>
         <module>order-service</module>

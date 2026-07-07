@@ -1,22 +1,35 @@
 package com.orderflow.inventory.config;
 
+import com.orderflow.shared.security.JwtAuthenticationFilter;
+import com.orderflow.shared.security.JwtService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-// Phase 2: stateless and open for curl-based testing.
-// Phase 3 replaces this with JWT validation (admin endpoints locked to ADMIN).
+// Stateless JWT security. Seeding stock (POST) is an admin operation; availability
+// reads require any authenticated user.
 @Configuration
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtService jwtService;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/inventory/**").hasRole("ADMIN")
+                        .anyRequest().authenticated())
+                .addFilterBefore(new JwtAuthenticationFilter(jwtService),
+                        UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

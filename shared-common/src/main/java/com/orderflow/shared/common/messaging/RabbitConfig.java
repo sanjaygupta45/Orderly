@@ -16,8 +16,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 // Shared RabbitMQ setup: the topic exchange, the dead-letter exchange, and a JSON
 // message converter. Individual services declare their own queues + bindings.
 // @EnableScheduling here powers the OutboxRelay poller.
-// Only active when spring-amqp is on the classpath (business services), so non-messaging
-// apps (e.g. the Eureka registry) that pull in shared-common are unaffected.
+// Only active when spring-amqp is on the classpath, so a service that pulls in
+// shared-common without messaging is unaffected.
 @Configuration
 @EnableScheduling
 @ConditionalOnClass(RabbitTemplate.class)

@@ -1,0 +1,79 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 0,
+  "schemaVersion": 39,
+  "tags": ["orderflow"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "title": "OrderFlow — Business Metrics",
+  "uid": "orderflow-business",
+  "version": 1,
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Order lifecycle (per-second rate)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(orderflow_orders_total{status=\"created\"}[5m]))", "legendFormat": "created" },
+        { "refId": "B", "expr": "sum(rate(orderflow_orders_total{status=\"confirmed\"}[5m]))", "legendFormat": "confirmed" },
+        { "refId": "C", "expr": "sum(rate(orderflow_orders_total{status=\"failed\"}[5m]))", "legendFormat": "failed" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Payment success rate",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
+      "targets": [
+        { "refId": "A", "expr": "sum(orderflow_payment_success_total) / clamp_min(sum(orderflow_payment_success_total) + sum(orderflow_payment_failed_total), 1)", "legendFormat": "success rate" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Orders confirmed (total)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
+      "targets": [
+        { "refId": "A", "expr": "sum(orderflow_orders_total{status=\"confirmed\"})", "legendFormat": "confirmed" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Inventory reserve / release (per-second rate)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(orderflow_inventory_reserved_total[5m]))", "legendFormat": "reserved" },
+        { "refId": "B", "expr": "sum(rate(orderflow_inventory_released_total[5m]))", "legendFormat": "released" },
+        { "refId": "C", "expr": "sum(rate(orderflow_inventory_reservation_failed_total[5m]))", "legendFormat": "reservation failed" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Notifications sent by channel (per-second rate)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "refId": "A", "expr": "sum by (channel) (rate(orderflow_notifications_sent_total[5m]))", "legendFormat": "{{channel}}" }
+      ]
+    }
+  ]
+}

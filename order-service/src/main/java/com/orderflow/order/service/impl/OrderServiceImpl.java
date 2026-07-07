@@ -13,6 +13,7 @@ import com.orderflow.shared.common.outbox.OutboxEventPublisher;
 import com.orderflow.shared.events.OrderCreatedEvent;
 import com.orderflow.shared.events.OrderLineItem;
 import com.orderflow.shared.events.RoutingKeys;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final OutboxEventPublisher outbox;
+    private final MeterRegistry meterRegistry;
 
     @Override
     @Transactional
@@ -65,6 +67,7 @@ public class OrderServiceImpl implements OrderService {
                 .items(eventItems)
                 .build());
 
+        meterRegistry.counter("orderflow.orders", "status", "created").increment();
         log.info("Order {} created (PENDING_PAYMENT), total={}", order.getOrderId(), total);
         return toResponse(order);
     }

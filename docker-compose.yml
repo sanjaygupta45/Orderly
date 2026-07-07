@@ -1,13 +1,25 @@
-# OrderFlow local infrastructure.
-# Brings up the backing services (DB, broker, cache, monitoring) for local dev.
-# Application services run from your IDE / `mvn spring-boot:run` during development;
-# they get dockerized and added here in a later phase (`docker compose up` -> whole platform).
-#
-#   docker compose up -d
-#
-# UIs: RabbitMQ http://localhost:15672 (orderflow/orderflow) | Prometheus :9090 | Grafana :3000 (admin/admin)
+# OrderFlow — full platform. One command brings up everything:
+name: orderflow
+
+# Shared env: services reach infra by container name; JSON logs via LOG_FORMAT=ecs.
+# (DB/RabbitMQ/Redis credentials already match the infra defaults in each service.)
+x-common-env: &common-env
+  SPRING_RABBITMQ_HOST: rabbitmq
+  SPRING_DATA_REDIS_HOST: redis
+  SPRING_DATA_REDIS_PASSWORD: redis
+  LOG_FORMAT: ecs
+
+# Wait for backing services to be healthy before starting.
+x-infra-deps: &infra-deps
+  mysql:
+    condition: service_healthy
+  rabbitmq:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
 
 services:
+  # ----------------------------- infrastructure -----------------------------
   mysql:
     image: mysql:8.4
     container_name: orderflow-mysql
@@ -17,7 +29,6 @@ services:
     ports:
       - "3308:3306"
     volumes:
-      # init.sql runs once on first start and creates one database per service
       - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - mysql-data:/var/lib/mysql
     healthcheck:
@@ -35,8 +46,8 @@ services:
       RABBITMQ_DEFAULT_USER: orderflow
       RABBITMQ_DEFAULT_PASS: orderflow
     ports:
-      - "5672:5672"     # AMQP
-      - "15672:15672"   # management UI
+      - "5672:5672"
+      - "15672:15672"
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
@@ -50,7 +61,6 @@ services:
     image: redis:7.4-alpine
     container_name: orderflow-redis
     restart: unless-stopped
-    # Password matches the services' spring.data.redis.password
     command: ["redis-server", "--requirepass", "redis"]
     ports:
       - "6379:6379"
@@ -72,9 +82,6 @@ services:
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
-    # Lets Prometheus (in Docker) scrape services running on the host during dev
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     networks: [orderflow-net]
 
   grafana:
@@ -93,19 +100,123 @@ services:
     depends_on: [prometheus]
     networks: [orderflow-net]
 
-  # TEMPORARY: product-service still uses MongoDB. Removed once it migrates to MySQL (Phase 2).
-  mongo:
-    image: mongo:7.0
-    container_name: orderflow-mongo
+  # ------------------------------- services ---------------------------------
+  auth-service:
+    build:
+      context: .
+      args:
+        SERVICE: auth-service
+    image: orderflow/auth-service
+    container_name: orderflow-auth
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: password
-      MONGO_INITDB_DATABASE: product-service
+      <<: *common-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/auth_service
+    depends_on: *infra-deps
     ports:
-      - "27017:27017"
-    volumes:
-      - mongo-data:/data/db
+      - "8081:8081"
+    networks: [orderflow-net]
+
+  product-service:
+    build:
+      context: .
+      args:
+        SERVICE: product-service
+    image: orderflow/product-service
+    container_name: orderflow-product
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/product_service
+    depends_on: *infra-deps
+    ports:
+      - "8084:8084"
+    networks: [orderflow-net]
+
+  order-service:
+    build:
+      context: .
+      args:
+        SERVICE: order-service
+    image: orderflow/order-service
+    container_name: orderflow-order
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/order_service
+    depends_on: *infra-deps
+    ports:
+      - "8083:8083"
+    networks: [orderflow-net]
+
+  inventory-service:
+    build:
+      context: .
+      args:
+        SERVICE: inventory-service
+    image: orderflow/inventory-service
+    container_name: orderflow-inventory
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/inventory_service
+    depends_on: *infra-deps
+    ports:
+      - "8082:8082"
+    networks: [orderflow-net]
+
+  payment-service:
+    build:
+      context: .
+      args:
+        SERVICE: payment-service
+    image: orderflow/payment-service
+    container_name: orderflow-payment
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/payment_service
+      PAYMENT_MODE: RANDOM
+    depends_on: *infra-deps
+    ports:
+      - "8085:8085"
+    networks: [orderflow-net]
+
+  notification-service:
+    build:
+      context: .
+      args:
+        SERVICE: notification-service
+    image: orderflow/notification-service
+    container_name: orderflow-notification
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/notification_service
+    depends_on: *infra-deps
+    ports:
+      - "8086:8086"
+    networks: [orderflow-net]
+
+  api-gateway:
+    build:
+      context: .
+      args:
+        SERVICE: api-gateway
+    image: orderflow/api-gateway
+    container_name: orderflow-gateway
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      AUTH_URI: http://auth-service:8081
+      PRODUCT_URI: http://product-service:8084
+      ORDER_URI: http://order-service:8083
+      INVENTORY_URI: http://inventory-service:8082
+      PAYMENT_URI: http://payment-service:8085
+      NOTIFICATION_URI: http://notification-service:8086
+    depends_on: *infra-deps
+    ports:
+      - "8080:8080"
     networks: [orderflow-net]
 
 networks:
@@ -118,4 +229,3 @@ volumes:
   redis-data:
   prometheus-data:
   grafana-data:
-  mongo-data:

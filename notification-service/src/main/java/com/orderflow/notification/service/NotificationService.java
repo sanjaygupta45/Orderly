@@ -12,6 +12,7 @@ import com.orderflow.shared.events.NotificationCreatedEvent;
 import com.orderflow.shared.events.OrderCancelledEvent;
 import com.orderflow.shared.events.OrderConfirmedEvent;
 import com.orderflow.shared.events.RoutingKeys;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -31,6 +32,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final IdempotencyService idempotency;
     private final OutboxEventPublisher outbox;
+    private final MeterRegistry meterRegistry;
 
     @Transactional
     public void onOrderConfirmed(OrderConfirmedEvent event) {
@@ -74,6 +76,7 @@ public class NotificationService {
             notification.setStatus("SENT");
             notificationRepository.save(notification);
             // real delivery would call an email/SMS/push provider here
+            meterRegistry.counter("orderflow.notifications.sent", "channel", channel.name(), "type", type.name()).increment();
             log.info("[{}] to user {} for order {}: {}", channel, userId, orderId, content);
         }
         outbox.save(RoutingKeys.NOTIFICATION_CREATED, NotificationCreatedEvent.builder()

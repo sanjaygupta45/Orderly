@@ -12,6 +12,7 @@ import com.orderflow.shared.events.InventoryReservedEvent;
 import com.orderflow.shared.events.PaymentCompletedEvent;
 import com.orderflow.shared.events.PaymentFailedEvent;
 import com.orderflow.shared.events.RoutingKeys;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -32,6 +33,7 @@ public class PaymentService {
     private final IdempotencyService idempotency;
     private final OutboxEventPublisher outbox;
     private final PaymentSimulator simulator;
+    private final MeterRegistry meterRegistry;
 
     @Transactional
     public void process(InventoryReservedEvent event) {
@@ -59,6 +61,7 @@ public class PaymentService {
                         .amount(event.getAmount())
                         .correlationId(event.getCorrelationId())
                         .build());
+                meterRegistry.counter("orderflow.payment.success").increment();
                 log.info("Payment {} SUCCESS for order {}", payment.getPaymentId(), event.getOrderId());
             } else {
                 // FAILED or TIMEOUT - both mean the charge did not go through
@@ -72,6 +75,7 @@ public class PaymentService {
                         .reason(reason)
                         .correlationId(event.getCorrelationId())
                         .build());
+                meterRegistry.counter("orderflow.payment.failed").increment();
                 log.warn("Payment {} {} for order {}: {}", payment.getPaymentId(), outcome, event.getOrderId(), reason);
             }
         } finally {

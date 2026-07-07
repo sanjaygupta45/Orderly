@@ -83,7 +83,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void logout(Long userId) {
-        User user = userRepository.findByUserIdAndActive( userId, true);
+        User user = userRepository.findByIdAndActive( userId, true);
         if (user == null) {
             throw new UsernameNotFoundException("User not found");
         }
@@ -95,7 +95,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserProfileResponseDTO getUserProfile(Long userId) {
 
-        User user = userRepository.findByUserIdAndActive(userId, true);
+        User user = userRepository.findByIdAndActive(userId, true);
         if (user == null) {
             throw new UsernameNotFoundException("User not found");
         }
@@ -109,7 +109,7 @@ public class UserServiceImpl implements UserService {
             Long userId,
             UpdateUserRequestDTO dto) {
 
-        User user = userRepository.findByUserIdAndActive(userId, true);
+        User user = userRepository.findByIdAndActive(userId, true);
         if (user == null) {
             throw new UsernameNotFoundException("User not found");
         }
@@ -130,7 +130,7 @@ public class UserServiceImpl implements UserService {
     @CacheEvict(value = "users", key = "#userId")
     @Override
     public void deleteUser(Long UserId) {
-        User user = userRepository.findByUserIdAndActive(UserId, true);
+        User user = userRepository.findByIdAndActive(UserId, true);
 
         if (user == null) {
             throw new UsernameNotFoundException("User not found");
