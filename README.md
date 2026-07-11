@@ -153,8 +153,6 @@ curl -s localhost:8080/api/v1/orders/$OID -H "Authorization: Bearer $TOKEN" | jq
 
 ## Future improvements
 
-- Asymmetric JWT (RSA) so services validate with a public key instead of a shared secret.
-- Discovery-based routing (`lb://`) or Kubernetes DNS instead of static gateway URIs.
-- Outbox → CDC (Debezium) to drop the polling relay.
+- Asymmetric JWT (RSA/JWKS) so services validate with a public key instead of a shared secret.
+- Kubernetes deployment: Services + DNS for discovery (registries like Eureka are legacy now).
 - SSE/WebSocket order updates instead of client polling.
-- Contract tests across services; chaos/latency testing of the saga.

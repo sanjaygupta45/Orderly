@@ -154,4 +154,9 @@ orderflow/
 | Outbox + poller | simple, DB-only guarantee | CDC (Debezium) — no polling latency |
 | HS256 shared secret | matches existing auth, simple rotation story | RSA/JWKS — services need only the public key |
 | Static gateway routes | deterministic in Docker/K8s (DNS) | discovery + `lb://` (Eureka was removed as dead weight) |
+
+**Industry note:** client-side registries like Eureka are legacy — today the platform does the
+discovery. **Kubernetes Services + DNS** is the current standard, and it is exactly what our static
+container-name routing maps to. A Kubernetes deployment is the planned next step (see README →
+Future improvements).
 | Client polling | simplest correct UX for status | SSE/WebSocket push |
