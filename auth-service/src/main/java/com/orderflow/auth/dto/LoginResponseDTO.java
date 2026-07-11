@@ -19,5 +19,4 @@ public class LoginResponseDTO {
     private Long expiresIn;
     private String email;
     private String role;
-    private Long loginAt;
 }

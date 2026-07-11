@@ -6,6 +6,7 @@ import lombok.Getter;
 import java.time.Instant;
 
 // Uniform envelope for successful REST responses across all services.
+// (Errors use ApiError, built by the shared exception handler.)
 @Getter
 @AllArgsConstructor
 public class ApiResponse<T> {
@@ -21,9 +22,5 @@ public class ApiResponse<T> {
 
     public static <T> ApiResponse<T> ok(String message, T data) {
         return new ApiResponse<>(true, message, data, Instant.now());
-    }
-
-    public static <T> ApiResponse<T> fail(String message) {
-        return new ApiResponse<>(false, message, null, Instant.now());
     }
 }

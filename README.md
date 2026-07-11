@@ -1,200 +1,160 @@
-# 🛒 Orderly - Event-Driven Microservices E-Commerce Platform
+# OrderFlow
 
-<div align="center">
+Event-driven order-processing platform. A checkout kicks off a **choreography saga** across
+independent Spring Boot services that talk over **RabbitMQ** — no central orchestrator; each service
+reacts to an event and emits the next one (or a compensating one). Every service owns its own MySQL
+schema and communicates asynchronously.
 
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.5-brightgreen?style=for-the-badge&logo=springboot)
-![Java](https://img.shields.io/badge/Java-21-orange?style=for-the-badge&logo=openjdk)
-![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2023.0-6DB33F?style=for-the-badge&logo=spring)
-![Apache Kafka](https://img.shields.io/badge/Kafka-Event%20Driven-231F20?style=for-the-badge&logo=apachekafka)
-![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
-![MongoDB](https://img.shields.io/badge/MongoDB-7.0-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Kubernetes](https://img.shields.io/badge/Kubernetes-Orchestrated-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)
+## Architecture
 
-**A production-ready, event-driven microservices platform built with Spring Cloud ecosystem**
+```mermaid
+flowchart LR
+  Client["React client :5173"] --> GW["API Gateway :8080<br/>JWT · routing · rate-limit"]
+  GW --> AUTH["auth :8081"]
+  GW --> PROD["product :8084"]
+  GW --> ORD["order :8083"]
+  GW --> INV["inventory :8082"]
+  GW --> PAY["payment :8085"]
+  GW --> NOT["notification :8086"]
 
-</div>
+  ORD <--> MQ{{"RabbitMQ<br/>order.exchange"}}
+  INV <--> MQ
+  PAY <--> MQ
+  MQ --> NOT
 
----
-
-## 🎯 Overview
-
-**Orderly** is a scalable e-commerce platform built using microservices architecture, demonstrating industry-standard patterns for distributed systems including service discovery, API gateway, event-driven communication, and comprehensive observability.
-
-### ✨ Key Features
-
-| Category | Features |
-|----------|----------|
-| **Service Communication** | Synchronous (REST/FeignClient) + Asynchronous (Apache Kafka) |
-| **Resilience** | Circuit Breaker, Retry, Timeout, Rate Limiting (Resilience4j) |
-| **Service Discovery** | Dynamic registration & health monitoring (Netflix Eureka) |
-| **API Gateway** | Centralized routing, JWT authentication, rate limiting |
-| **Configuration** | Externalized configuration with Spring Cloud Config |
-| **Security** | JWT-based authentication, Spring Security, BCrypt encryption |
-| **Observability** | Distributed tracing (Zipkin), Metrics (Prometheus/Grafana), Logging (ELK) |
-| **Deployment** | Containerized with Docker, orchestrated on Kubernetes |
-
----
-
-## 🏗 Architecture
-
-![alt text](image.png)
-
-### Data Flow
-
-```
-Client Request
-      │
-      ▼
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│ API Gateway │────►│   Eureka    │────►│Core Service │────►│  Database   │
-│ (JWT + Rate │     │  Discovery  │     │             │     │ MySQL/Mongo │
-│  Limiting)  │     └─────────────┘     └──────┬──────┘     └─────────────┘
-└─────────────┘                                │
-                                               ▼
-                                        ┌─────────────┐
-                                        │    Kafka    │
-                                        │   Events    │
-                                        └──────┬──────┘
-                              ┌────────────────┼────────────────┐
-                              ▼                ▼                ▼
-                        ┌──────────┐    ┌──────────┐    ┌──────────┐
-                        │  Audit   │    │ Inventory│    │  Email/  │
-                        │  Logs    │    │  Update  │    │   SMS    │
-                        └──────────┘    └──────────┘    └──────────┘
+  INV -. "lock + cache" .-> REDIS[("Redis")]
+  ORD & INV & PAY & NOT & AUTH & PROD --> DB[("MySQL<br/>one schema per service")]
 ```
 
----
+The gateway is the **only** entry point (JWT validated at the edge, identity forwarded downstream).
+Services never call each other synchronously — the saga is driven entirely by events.
 
-## 🔧 Microservices
+## Saga flow (happy path + compensation)
 
-| Service | Port | Description |
-|---------|------|-------------|
-| **[Auth Service](./auth-service)** | 8081 | User authentication, JWT token management, role-based access control |
-| **[Order Service](./order-service)** | 8083 | Order processing with inventory validation, resilience patterns |
-| **[Product Service](./product-service)** | 8084 | Product catalog with MongoDB, filtering & pagination |
-| **[Inventory Service](./inventory-service)** | 8082 | Real-time stock management and availability validation |
-| **API Gateway** | 8080 | Request routing, JWT validation, rate limiting |
-| **Discovery Server** | 8761 | Service registration and health monitoring |
-| **Config Server** | 8888 | Centralized configuration management |
-| **Notification Service** | 8085 | Email/SMS notifications via Kafka events |
+```mermaid
+sequenceDiagram
+  participant O as Order
+  participant I as Inventory
+  participant P as Payment
+  participant N as Notification
+  Note over O,N: all events flow through the order.exchange topic exchange
+  O->>I: order.created
+  I->>P: inventory.reserved (stock held under Redisson lock)
+  alt payment succeeds
+    P->>O: payment.completed
+    O->>N: order.confirmed  → CONFIRMED
+  else payment fails
+    P->>I: payment.failed
+    I->>O: inventory.released (compensation — stock returned)
+    O->>N: order.cancelled  → CANCELLED
+  end
+```
 
----
+Order lifecycle: `PENDING_PAYMENT → CONFIRMED | FAILED | CANCELLED`.
 
-## 🛠 Technology Stack
+## Services
 
-### Backend
-| Technology | Purpose |
-|------------|---------|
-| Java 21 | Programming Language |
-| Spring Boot 3.2.5 | Application Framework |
-| Spring Cloud 2023.0 | Microservices Infrastructure |
-| Spring Security | Authentication & Authorization |
+| Service | Port | Role | Owns |
+|---|---|---|---|
+| api-gateway | 8080 | Single entry: JWT validation, routing, Redis rate-limit, correlation IDs | — |
+| auth-service | 8081 | Users + JWT issuance (HS256), RBAC | `auth_service` |
+| product-service | 8084 | Catalog (public reads) | `product_service` |
+| order-service | 8083 | Order lifecycle + saga coordinator | `order_service` |
+| inventory-service | 8082 | Reserve/release stock, overselling guard | `inventory_service` |
+| payment-service | 8085 | Simulated gateway (SUCCESS/FAILED/TIMEOUT) | `payment_service` |
+| notification-service | 8086 | Email/SMS/push (simulated) + history | `notification_service` |
+| `shared-events` · `shared-common` · `shared-security` | — | Event contracts · outbox+idempotency+RabbitMQ config · JWT | — |
 
-### Data Layer
-| Technology | Purpose |
-|------------|---------|
-| MySQL 8.0 | Relational Database (Auth, Order, Inventory) |
-| MongoDB 7.0 | Document Database (Product Catalog) |
-| Spring Data JPA | ORM for MySQL |
-| Spring Data MongoDB | ODM for MongoDB |
+## Key patterns (the "why")
 
-### Communication
-| Technology | Purpose |
-|------------|---------|
-| OpenFeign | Declarative REST Client |
-| Apache Kafka | Event Streaming Platform |
-| Resilience4j | Fault Tolerance (Circuit Breaker, Retry, Timeout) |
+- **Transactional Outbox** — a domain change and its event are written in one DB transaction; a poller
+  publishes from the `outbox_event` table. No lost or ghost events despite the DB/broker dual-write.
+- **Idempotent consumers** — every handler records the `eventId` in `processed_message` in the same
+  transaction as its work, so RabbitMQ's at-least-once redelivery can't double-process.
+- **Redisson distributed lock** (`inventory:product:{sku}`) held across the reserve transaction —
+  prevents overselling under concurrency; a JPA `@Version` column is the second guard.
+- **DLQ + retry** — each queue dead-letters to `order.dlx` after retries exhaust; poison messages are
+  isolated, not lost.
+- **Redis cache** for inventory reads (evict-on-write). **Micrometer → Prometheus → Grafana** for
+  metrics; structured JSON logs carry a correlation ID end-to-end.
 
-### Infrastructure
-| Technology | Purpose |
-|------------|---------|
-| Netflix Eureka | Service Discovery |
-| Spring Cloud Gateway | API Gateway |
-| Spring Cloud Config | Configuration Management |
+RabbitMQ topology, ER diagram and per-step sequences: see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-### Observability
-| Technology | Purpose |
-|------------|---------|
-| Zipkin | Distributed Tracing |
-| Prometheus | Metrics Collection |
-| Grafana | Metrics Visualization |
-| ELK Stack | Centralized Logging |
+## Tech stack
 
-### DevOps
-| Technology | Purpose |
-|------------|---------|
-| Docker | Containerization |
-| Kubernetes | Container Orchestration |
-| Maven | Build Tool |
+Java 21 · Spring Boot 3.5 · Spring Cloud Gateway 2025 · Spring Data JPA · Spring Security (JWT) ·
+RabbitMQ · Redis + Redisson · MySQL · Micrometer/Prometheus/Grafana · springdoc OpenAPI ·
+JUnit 5 / Mockito / Testcontainers · Docker Compose · React + Vite + Tailwind.
 
----
+## Local setup
 
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Java 21+
-- Maven 3.9+
-- Docker & Docker Compose
-
-### Quick Start
+Requires Java 21, Maven, Docker, Node 18+.
 
 ```bash
-# Clone repository
-git clone https://github.com/sanjaygupta45/Orderly.git
-cd Orderly
-
-# Start infrastructure (databases, Kafka, etc.)
-docker-compose up -d
-
-# Build all services
-mvn clean install -DskipTests
-
-# Run services
-./start-services.sh
+mvn clean install                 # build all modules + run tests
 ```
 
-### Service Endpoints
+Run infra + services locally (RabbitMQ/Redis/MySQL). If you already run RabbitMQ/Redis natively,
+start only MySQL (`docker compose up -d mysql`) and launch a service overriding the creds:
 
-| Service | URL |
-|---------|-----|
-| API Gateway | http://localhost:8080 |
-| Eureka Dashboard | http://localhost:8761 |
-| Zipkin UI | http://localhost:9411 |
-| Grafana | http://localhost:3000 |
-| Kibana | http://localhost:5601 |
-
----
-
-## 📁 Project Structure
-
-```
-Orderly/
-├── api-gateway/           # Spring Cloud Gateway
-├── discovery-server/      # Netflix Eureka Server
-├── config-server/         # Spring Cloud Config Server
-├── auth-service/          # Authentication & Authorization
-├── order-service/         # Order Processing
-├── inventory-service/     # Stock Management
-├── product-service/       # Product Catalog
-├── notification-service/  # Event-driven Notifications
-├── docker/                # Docker configurations
-├── k8s/                   # Kubernetes manifests
-├── docker-compose.yml     # Local development stack
-└── pom.xml               # Parent POM
+```bash
+java -jar order-service/target/order-service-1.0.0.jar \
+  --spring.rabbitmq.username=guest --spring.rabbitmq.password=guest --spring.data.redis.password=
 ```
 
----
+Frontend: `npm --prefix frontend install && npm --prefix frontend run dev` → http://localhost:5173
+(proxies `/api` to the gateway).
 
-## 📄 License
+## Deployment (one command)
 
-This project is licensed under the MIT License.
+```bash
+docker compose up --build
+```
 
----
+Brings up all 7 services + RabbitMQ, Redis, MySQL, Prometheus, Grafana. Services reach infra by
+container DNS; payment outcome via `PAYMENT_MODE` (`RANDOM`|`ALWAYS_SUCCESS`|`ALWAYS_FAIL`).
 
-<div align="center">
+| UI | URL |
+|---|---|
+| Gateway | http://localhost:8080 |
+| RabbitMQ | http://localhost:15672 (orderflow/orderflow) |
+| Prometheus | http://localhost:9090 |
+| Grafana | http://localhost:3000 (admin/admin) |
 
-**Sanjay Gupta** • [GitHub](https://github.com/sanjaygupta45) • [LinkedIn](https://linkedin.com/in/sanjaygupta45)
+> On a machine already running RabbitMQ/Redis natively, stop them first (ports 5672/6379 collide).
 
-</div>
+## API guide
+
+All traffic goes through the gateway (`:8080`). Swagger UI per service at
+`http://localhost:<port>/swagger-ui.html` (auth: `/api/swagger-ui.html`).
+
+| Method | Path | Auth |
+|---|---|---|
+| POST | `/api/auth/register`, `/api/auth/login` | public |
+| GET | `/api/v1/products` | public |
+| POST | `/api/v1/products`, `/api/v1/inventory` | ADMIN |
+| POST | `/api/v1/orders` | authenticated |
+| GET | `/api/v1/orders/{orderId}`, `/api/v1/orders?userId=` | authenticated |
+| GET | `/api/v1/notifications?userId=` | authenticated |
+
+```bash
+# 1. register → returns { accessToken, userId, ... }
+TOKEN=$(curl -sX POST localhost:8080/api/auth/register -H 'Content-Type: application/json' \
+  -d '{"email":"a@b.com","password":"secret123","role":"ADMIN","fullName":"A"}' | jq -r .accessToken)
+
+# 2. seed stock (ADMIN)  3. place order  4. poll status → CONFIRMED / CANCELLED
+curl -sX POST localhost:8080/api/v1/inventory -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"skuCode":"SKU-1","quantity":10}'
+OID=$(curl -sX POST localhost:8080/api/v1/orders -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"userId":1,"items":[{"skuCode":"SKU-1","quantity":2,"unitPrice":100}]}' | jq -r .data.orderId)
+curl -s localhost:8080/api/v1/orders/$OID -H "Authorization: Bearer $TOKEN" | jq .data.status
+```
+
+## Future improvements
+
+- Asymmetric JWT (RSA) so services validate with a public key instead of a shared secret.
+- Discovery-based routing (`lb://`) or Kubernetes DNS instead of static gateway URIs.
+- Outbox → CDC (Debezium) to drop the polling relay.
+- SSE/WebSocket order updates instead of client polling.
+- Contract tests across services; chaos/latency testing of the saga.

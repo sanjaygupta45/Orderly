@@ -53,6 +53,12 @@
             <artifactId>spring-boot-starter-amqp</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- springdoc: only for the shared OpenApiConfig (@ConditionalOnClass-guarded) -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <optional>true</optional>
+        </dependency>
 
         <dependency>
             <groupId>org.projectlombok</groupId>

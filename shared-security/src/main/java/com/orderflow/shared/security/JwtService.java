@@ -17,15 +17,7 @@ public class JwtService {
     private final JwtProperties properties;
     private volatile SecretKey signingKey;
 
-    public boolean isValid(String token) {
-        try {
-            parse(token);   // verifies signature + expiry, throws if bad
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
+    // Verifies signature + expiry and returns the claims; throws JwtException if invalid.
     public Claims parse(String token) {
         return Jwts.parser()
                 .verifyWith(key())
@@ -34,17 +26,12 @@ public class JwtService {
                 .getPayload();
     }
 
-    public String extractUsername(String token) {
-        return parse(token).getSubject();
-    }
-
-    public String extractRole(String token) {
-        return parse(token).get("role", String.class);
-    }
-
-    public Long extractUserId(String token) {
-        Object userId = parse(token).get("userId");
-        return userId == null ? null : Long.valueOf(userId.toString());
+    // "Bearer xyz" -> "xyz"; null if the header is missing or not a bearer token.
+    public static String stripBearer(String authorizationHeader) {
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            return authorizationHeader.substring(7);
+        }
+        return null;
     }
 
     private SecretKey key() {

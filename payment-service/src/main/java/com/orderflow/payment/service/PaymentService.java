@@ -48,8 +48,8 @@ public class PaymentService {
             payment.setOrderId(event.getOrderId());
             payment.setUserId(event.getUserId());
             payment.setAmount(event.getAmount());
-            payment.setStatus(PaymentStatus.PENDING);
 
+            // the simulator decides the outcome; the row is saved once, with its final status
             PaymentStatus outcome = simulator.decide(event.getAmount());
             if (outcome == PaymentStatus.SUCCESS) {
                 payment.setStatus(PaymentStatus.SUCCESS);

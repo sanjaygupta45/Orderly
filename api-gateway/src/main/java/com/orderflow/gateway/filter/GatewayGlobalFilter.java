@@ -45,12 +45,20 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
         if (isPublic(request.getMethod(), path)) {
             mutated = request.mutate().header(CID, cid).build();
         } else {
-            String token = bearerToken(request);
-            if (token == null || !jwtService.isValid(token)) {
+            // one parse verifies the token AND yields the claims
+            String token = JwtService.stripBearer(request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION));
+            Claims claims = null;
+            if (token != null) {
+                try {
+                    claims = jwtService.parse(token);
+                } catch (Exception e) {
+                    // invalid/expired -> handled below
+                }
+            }
+            if (claims == null) {
                 log.warn("401 {} {} cid={}", method, path, cid);
                 return unauthorized(exchange, cid);
             }
-            Claims claims = jwtService.parse(token);
             mutated = request.mutate()
                     .header(CID, cid)
                     .header("X-User-Id", String.valueOf(claims.get("userId")))
@@ -75,14 +83,6 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
             return true;
         }
         return HttpMethod.GET.equals(httpMethod) && path.startsWith("/api/v1/products");
-    }
-
-    private String bearerToken(ServerHttpRequest request) {
-        String header = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-        if (header != null && header.startsWith("Bearer ")) {
-            return header.substring(7);
-        }
-        return null;
     }
 
     private Mono<Void> unauthorized(ServerWebExchange exchange, String cid) {

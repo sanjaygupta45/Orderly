@@ -27,27 +27,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain chain) throws ServletException, IOException {
-        String token = bearerToken(request);
-        if (token != null && jwtService.isValid(token)) {
-            Claims claims = jwtService.parse(token);
-            String email = claims.getSubject();
-            String role = claims.get("role", String.class);
-            List<SimpleGrantedAuthority> authorities = role == null
-                    ? List.of()
-                    : List.of(new SimpleGrantedAuthority("ROLE_" + role));
+        String token = JwtService.stripBearer(request.getHeader("Authorization"));
+        if (token != null) {
+            try {
+                // one parse verifies the token AND yields the claims
+                Claims claims = jwtService.parse(token);
+                String email = claims.getSubject();
+                String role = claims.get("role", String.class);
+                List<SimpleGrantedAuthority> authorities = role == null
+                        ? List.of()
+                        : List.of(new SimpleGrantedAuthority("ROLE_" + role));
 
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(email, null, authorities);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(email, null, authorities);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            } catch (Exception e) {
+                // invalid/expired token -> stay unauthenticated; the chain decides access
+            }
         }
         chain.doFilter(request, response);
-    }
-
-    private String bearerToken(HttpServletRequest request) {
-        String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
-            return header.substring(7);
-        }
-        return null;
     }
 }
